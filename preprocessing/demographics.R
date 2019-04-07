@@ -99,7 +99,7 @@ read_and_preprocess_data = function(years) {
   data = list()
   
   for (year in years) {
-    base_dir = str_interp('~/emoryhealthcare-project/data/${year}/Demographics')
+    base_dir = str_interp('~/emoryhealthcare/data/${year}/Demographics')
     files = list.files(base_dir)
     file = files[str_detect(files, 'DEMO_*')][1]
     path = str_interp('${base_dir}/${file}')
@@ -121,3 +121,5 @@ read_and_preprocess_data = function(years) {
   data = rbindlist(data, use.names = T)
   return (data)
 }
+
+read_and_preprocess_data(c('2015-2016'))

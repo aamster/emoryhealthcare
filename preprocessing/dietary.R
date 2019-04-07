@@ -44,7 +44,7 @@ read_and_preprocess_data = function(years) {
   data = list()
   
   for (year in years) {
-    base_dir = str_interp('~/emoryhealthcare-project/data/${year}/Dietary')
+    base_dir = str_interp('~/emoryhealthcare/data/${year}/Dietary')
     files = list.files(base_dir)
     
     file_name = files[str_detect(files, 'DR1TOT_*')][1]

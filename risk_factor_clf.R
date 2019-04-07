@@ -15,9 +15,19 @@ data = preprocessing$read_and_preprocess_data(years = c(
   '2007-2008', '2005-2006', '2003-2004', '2001-2002',  '1999-2000'
   ))
 
-# Note, DMDEDUC2 and  DMDMARTL only apply to those ages 20+
-# Note, RIDRETH3 includes non-hispanic asian code 5 which is not included prior to 2011
-# Thought, exclude those < 20 yrs old since they tend to be healthy and some variables are not given values for them?
+# Remove join key
+data[, SEQN := NULL]
+
+# Drop any drug categories which are reported by less than 1% of ppl who take medications
+# Note logic placed here since we have already dropped age < 20
+drug_category_frac = data[total_drug_count>0, lapply(.SD, sum), .SDcols = names(data)[str_detect(names(data), '^drug_category_')]] / nrow(data[total_drug_count>0])
+least_frequent_drug_categories = names(drug_category_frac)[c(drug_category_frac < .01)]
+data[, c(least_frequent_drug_categories) := NULL]
+
+print(paste('data size before dropping null obs', nrow(data)))
+# Drop any row with any missing value
+data = data[complete.cases(data)]
+print(paste('data size after dropping null obs', nrow(data)))
 
 # create a testing and training set
 data = data[sample(nrow(data))]
