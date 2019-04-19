@@ -95,6 +95,8 @@ def plot_ratio_feature_in_cluster_to_pop_matrix(df, non_zero_features):
     fig.savefig('feature_p_cluster_to_pop.png', bbox_inches='tight')
 
 if __name__ == '__main__':
+    np.random.seed(0)
+
     #df = pd.read_csv('../data/data.csv')
     #df = pd.read_csv('../data/data_drug_names.csv')
     df = pd.read_csv('../data/data_questionnaire_for_clustering.csv')
@@ -127,4 +129,6 @@ if __name__ == '__main__':
     plot_ratio_feature_in_cluster_to_pop_matrix(df, nonzero_features)
 
 
-
+    # write results to disk
+    pd.DataFrame.from_records(zip(df.cluster, df.SEQN), columns=['CLUSTER', 'SEQN']).to_csv('seqn_cluster_map.csv',
+                                                                                            index=False)

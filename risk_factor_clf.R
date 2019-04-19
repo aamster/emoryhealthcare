@@ -4,6 +4,7 @@ library(magrittr)
 library(ggplot2)
 library(dplyr)
 library(caret)
+library(gridExtra)
 
 preprocessing = import('preprocessing/preprocessing')
 metrics = import('metrics')
@@ -97,8 +98,9 @@ resamps = resamples(
 summary(resamps)
 
 # Plot cross validation metrics
-ggplot(model_xgbTree_smote) + labs(title = 'xgboost')
-ggplot(model_lasso_smote) + labs(title = 'Lasso logistic regression')
+g1 = ggplot(model_xgbTree_smote) + labs(title = 'xgboost')
+g2 = ggplot(model_lasso_smote) + labs(title = 'Lasso logistic regression')
+grid.arrange(g1, g2, nrow=1)
 
 ## Test performance
 ROCR::performance(
@@ -166,12 +168,47 @@ ggplot(
   labs(title = 'lasso', x = 'variable')
 
 # Looking at individual predictions
-pred = predict(model_xgbTree_smote, type = "prob", newdata = test)[[1]]
+# pred = predict(model_xgbTree_smote, type = "prob", newdata = test)[[1]]
+# 
+# high = sort(pred, decreasing = T, index.return=T)$ix[1]
+# high_obs = test[high]
+# high_pred = pred[high]
+# 
+# low = sort(pred, decreasing = T, index.return=T)$ix[length(pred)]
+# low_obs = test[low]
+# low_pred = pred[low]
 
-high = sort(pred, decreasing = T, index.return=T)$ix[1]
-high_obs = test[high]
-high_pred = pred[high]
+# LIME local approximation
+# X = train[, .SD, .SDcols=names(train)[names(train) != "questionnaire_overnight_hospital_patient_in_last_year"]]
+# 
+# pred = predict(model_xgbTree_smote, type="prob")[,1]
+# test_idx = c(which.min(pred), which.max(pred))
+# X_train = X[-test_idx]
+# X_test = X[test_idx]
+# 
+# explainer = lime::lime(X_train, model_xgbTree_smote)
+# explanation = lime::explain(X_test, explainer, labels="Yes", n_features=10, feature_select = "lasso_path")
+# 
+# g = lime::plot_features(explanation, ncol=1)
 
-low = sort(pred, decreasing = T, index.return=T)$ix[length(pred)]
-low_obs = test[low]
-low_pred = pred[low]
+g = ggplot(train, aes(questionnaire_overnight_hospital_patient_in_last_year, total_drug_count)) + geom_boxplot()
+g = ggplot(train, aes(questionnaire_overnight_hospital_patient_in_last_year, demographics_householdIncome)) + geom_boxplot()
+g = ggplot(train, aes(questionnaire_overnight_hospital_patient_in_last_year, demographics_age)) + geom_boxplot()
+g = ggplot(train[, 
+                .(female_frac = mean(demographics_gender == "Female")), 
+                by = .(questionnaire_overnight_hospital_patient_in_last_year)],
+           aes(questionnaire_overnight_hospital_patient_in_last_year, female_frac)) +
+  geom_bar(stat = 'identity') +
+  labs(title = 'Fraction female', y = 'Fraction')
+g = ggplot(copy(train)[, age_bin := cut(demographics_age, 4)][, 
+                 .(female_frac = mean(demographics_gender == "Female")), 
+                 by = .(questionnaire_overnight_hospital_patient_in_last_year, age_bin)],
+           aes(questionnaire_overnight_hospital_patient_in_last_year, female_frac)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~age_bin) +
+  labs(title = 'Fraction female by age', y = 'Fraction')
+# g = ggplot(copy(train)[, `:=`(age_bin = cut(demographics_age, 4), income_bin = cut(demographics_householdIncome, 4))], 
+#            aes(questionnaire_overnight_hospital_patient_in_last_year, examination_diastolic_blood_pressure)) +
+#   geom_boxplot() + 
+#   facet_grid(age_bin~income_bin) +
+#   labs(title = 'Diastolic blood pressure by age')

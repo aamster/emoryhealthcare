@@ -13,13 +13,26 @@ HOSPITAL_UTILIZATION_COLS = list(
   list(old = 'HUD070', new = 'questionnaire_overnight_hospital_patient_in_last_year')
 )
 
+SMOKING_COLS = list(
+  list(old = 'SMQ040', new = 'smoke_cigarettes')
+)
+
 ###### 
 # Recoding
 ######
 recode_hospital_patient_last_year = function(code) {
   x = case_when(
     code == 1 ~ 'Yes',
-    code == 2 ~ 'No'
+    code == 2 ~ 'No',
+    T ~ 'No'
+  )
+  return (factor(x, levels = c('Yes', 'No')))
+}
+
+recode_smoking = function(code) {
+  x = case_when(
+    code == 1 ~ 'Yes',
+    T ~ 'No'
   )
   return (factor(x, levels = c('Yes', 'No')))
 }
@@ -39,9 +52,10 @@ preprocess_med_category = function(med, med_info, hospital_util) {
   med_[, drug_category := paste0('drug_category_', drug_category)]
   med_ = med_[, .(drug_count = .N), by = .(SEQN, drug_category)]
   med_[, total_drug_count := sum(drug_count), by = .(SEQN)]
+  med_[, drug_count := ifelse(drug_count > 0, 1, 0)]
   
   seqn_no_meds = setdiff(hospital_util$SEQN, med_$SEQN)
-  no_meds = data.table(seqn = seqn_no_meds, drug_category=NA, drug_count=0, total_drug_count=0)
+  no_meds = data.table(SEQN = seqn_no_meds, drug_category=NA, drug_count=0, total_drug_count=0)
   med_ = rbindlist(list(med_, no_meds))
   
   med_wide = dcast(med_, SEQN ~ drug_category, fill=0, value.var = 'drug_count')
@@ -105,9 +119,15 @@ read_and_preprocess_data = function(years, use_drug_category = T) {
     path = str_interp('${base_dir}/${file_name}')
     med_info = fread(path)
     med = preprocess_meds(med, med_info, hospital_util, use_drug_category = use_drug_category)
+    
+    file_name = files[str_detect(files, 'SMQ_*')][1]
+    path = str_interp('${base_dir}/${file_name}')
+    smoking = preprocessing_util$read_and_preprocess_data(path, SMOKING_COLS)
+    smoking[, smoke_cigarettes := recode_smoking(smoke_cigarettes)]
 
     data_ = hospital_util %>%
-      merge(med, all = T, by = 'SEQN')
+      merge(med, all = T, by = 'SEQN') %>%
+      merge(smoking, all = T, by = 'SEQN')
     
     data = append(data, list(data_))
   }
@@ -128,9 +148,8 @@ read_and_preprocess_data = function(years, use_drug_category = T) {
 # med_info = fread('~/emoryhealthcare/data/2015-2016/Questionnaire/RXQ_DRUG.csv')
 # hospital_util = fread('~/emoryhealthcare/data/2015-2016/Questionnaire/HUQ_I.csv')
 # preprocess_meds(med, med_info, hospital_util, use_drug_category = F)
-# read_and_preprocess_data(years = c(
-#   '2015-2016', '2013-2014', '2011-2012', '2009-2010',
-#   '2007-2008', '2005-2006', '2003-2004', '2001-2002',  '1999-2000'
+# read_and_preprocess_data(  years = c(
+# '2015-2016'
 # ))
 
 get_data_for_clustering = function() {
@@ -153,4 +172,4 @@ get_data_for_clustering = function() {
   fwrite(data, 'data/data_questionnaire_for_clustering.csv')
 }
 
-get_data_for_clustering()
+# get_data_for_clustering()
